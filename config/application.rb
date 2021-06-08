@@ -8,6 +8,7 @@ Bundler.require(*Rails.groups)
 
 module Consultly
   class Application < Rails::Application
+    config.application_name = 'Consultly'
     config.active_job.queue_adapter = :sidekiq
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 6.1
