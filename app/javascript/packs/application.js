@@ -8,6 +8,7 @@ import Turbolinks from "turbolinks"
 import * as ActiveStorage from "@rails/activestorage"
 import "channels"
 import "packs/meetings"
+import "packs/purchases"
 
 Rails.start()
 Turbolinks.start()

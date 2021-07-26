@@ -10,6 +10,8 @@ Rails.application.routes.draw do
 #    end
 
   devise_for :users
+  get 'active-sessions', to: "meetings#active_sessions"
   root to: 'home#index'
-  # For details on the DSL available within this file, see https://guides.rubyonrails.org/routing.html
+
+  resources :users, only: [:index]
 end

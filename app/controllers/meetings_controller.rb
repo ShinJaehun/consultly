@@ -1,10 +1,15 @@
 class MeetingsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_meeting, only: %i[ show edit update destroy ]
+  before_action :must_be_admin, only: [:active_sessions]
 
   # GET /meetings or /meetings.json
   def index
-    @meetings = current_user.meetings.all
+    if current_user.admin?
+      @meetings = current_user.meetings.all
+    else
+      @meetings = current_user.meetings.where(user_id: current_user)
+    end
   end
 
   # GET /meetings/1 or /meetings/1.json
@@ -26,6 +31,27 @@ class MeetingsController < ApplicationController
     @meeting = Meeting.new(meeting_params)
     @meeting.user_id = current_user.id
 
+    token = params[:stripeToken]
+    card_brand = params[:user][:card_brand]
+    # card_brand 이렇게 넘기는 이유는 purchases.js에서 addFieldToForm()에 정의
+    card_exp_month = params[:user][:card_exp_month]
+    card_exp_year = params[:user][:card_exp_year]
+    card_last4 = params[:user][:card_last4]
+
+    charge = Stripe::Charge.create(
+      amount: 19900,
+      currency: "usd",
+      description: "Consultly",
+      source: token
+    )
+
+    current_user.stripe_id = charge.id
+    current_user.card_brand = card_brand
+    current_user.card_exp_month = card_exp_month
+    current_user.card_exp_year = card_exp_year
+    current_user.card_last4 = card_last4
+    current_user.save!
+
     respond_to do |format|
       if @meeting.save
         format.html { redirect_to @meeting, notice: "Meeting was successfully created." }
@@ -35,6 +61,10 @@ class MeetingsController < ApplicationController
         format.json { render json: @meeting.errors, status: :unprocessable_entity }
       end
     end
+
+  rescue String::CardError => e
+    flash.alert = e.message
+    render action: :new
   end
 
   # PATCH/PUT /meetings/1 or /meetings/1.json
@@ -59,6 +89,10 @@ class MeetingsController < ApplicationController
     end
   end
 
+  def active_sessions
+    @active_sessions = Meeting.where("end_time > ?", Time.now)
+  end
+
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_meeting
@@ -68,5 +102,11 @@ class MeetingsController < ApplicationController
     # Only allow a list of trusted parameters through.
     def meeting_params
       params.require(:meeting).permit(:name, :start_time, :end_time, :user_id)
+    end
+
+    def must_be_admin
+      unless current_user.admin?
+        redirect_to meetings_path, alert: "You don't have access to this page"
+      end
     end
 end
